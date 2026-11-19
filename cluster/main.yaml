@@ -8,7 +8,7 @@ spec:
     namespace: argo-cd
     server: https://kubernetes.default.svc
   source:
-    repoURL: git@github.com:hahahannes/example-ml-infra.git
+    repoURL: https://github.com/hahahannes/example-ml-infra.git
     targetRevision: main
     path: cluster/services
   project: default
@@ -27,7 +27,7 @@ spec:
     namespace: argo-cd
     server: https://kubernetes.default.svc
   source:
-    repoURL: git@github.com:hahahannes/example-ml-infra.git
+    repoURL: https://github.com/hahahannes/example-ml-infra.git
     targetRevision: main
     path: cluster/base-charts/argo-cd
     plugin: 
@@ -50,7 +50,7 @@ spec:
     namespace: vault
     server: https://kubernetes.default.svc
   source:
-    repoURL: git@github.com:hahahannes/example-ml-infra.git
+    repoURL: https://github.com/hahahannes/example-ml-infra.git
     targetRevision: main
     path: cluster/base-charts/vault
   project: default

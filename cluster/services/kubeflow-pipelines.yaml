@@ -16,7 +16,7 @@ spec:
     spec:
       project: default
       source:
-        repoURL: git@github.com:hahahannes/example-ml-infra.git
+        repoURL: https://github.com/hahahannes/example-ml-infra.git
         targetRevision: main
         path: cluster/base-charts/kubeflow-pipelines
         plugin:
