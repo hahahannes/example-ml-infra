@@ -1,0 +1,331 @@
+# PIPELINE DEFINITION
+# Name: bmw-llm
+# Description: Scrape BMW Group news, split, fine-tune a small causal LM and evaluate it on the test set.
+# Inputs:
+#    base_model: str [Default: 'HuggingFaceTB/SmolLM2-135M']
+#    batch_size: int [Default: 4.0]
+#    block_size: int [Default: 256.0]
+#    epochs: int [Default: 3.0]
+#    experiment: str [Default: 'bmw-llm']
+#    lr: float [Default: 5e-05]
+#    seed: int [Default: 42.0]
+#    test_frac: float [Default: 0.1]
+#    val_frac: float [Default: 0.1]
+components:
+  comp-evaluate:
+    executorLabel: exec-evaluate
+    inputDefinitions:
+      artifacts:
+        model:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+        test_data:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+      parameters:
+        batch_size:
+          parameterType: NUMBER_INTEGER
+        block_size:
+          parameterType: NUMBER_INTEGER
+    outputDefinitions:
+      artifacts:
+        metrics:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+  comp-scrape:
+    executorLabel: exec-scrape
+    outputDefinitions:
+      artifacts:
+        news:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-split:
+    executorLabel: exec-split
+    inputDefinitions:
+      artifacts:
+        news:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+      parameters:
+        seed:
+          parameterType: NUMBER_INTEGER
+        test_frac:
+          parameterType: NUMBER_DOUBLE
+        val_frac:
+          parameterType: NUMBER_DOUBLE
+    outputDefinitions:
+      artifacts:
+        test:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        train:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        val:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-train:
+    executorLabel: exec-train
+    inputDefinitions:
+      artifacts:
+        train_data:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        val_data:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+      parameters:
+        base_model:
+          parameterType: STRING
+        batch_size:
+          parameterType: NUMBER_INTEGER
+        block_size:
+          parameterType: NUMBER_INTEGER
+        epochs:
+          parameterType: NUMBER_INTEGER
+        experiment:
+          parameterType: STRING
+        lr:
+          parameterType: NUMBER_DOUBLE
+    outputDefinitions:
+      artifacts:
+        model:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+deploymentSpec:
+  executors:
+    exec-evaluate:
+      container:
+        args:
+        - -m
+        - '{{$.inputs.artifacts[''model''].path}}'
+        - -i
+        - '{{$.inputs.artifacts[''test_data''].path}}'
+        - -o
+        - '{{$.outputs.artifacts[''metrics''].path}}'
+        - --batch-size
+        - '{{$.inputs.parameters[''batch_size'']}}'
+        - --block-size
+        - '{{$.inputs.parameters[''block_size'']}}'
+        command:
+        - python3
+        - /app/evaluate.py
+        env:
+        - name: MLFLOW_TRACKING_URI
+          value: http://mlflow.mlflow.svc.cluster.local:5000
+        image: bmw-llm:latest
+        resources:
+          cpuRequest: 1.0
+          memoryLimit: 4.0
+          memoryRequest: 2.0
+          resourceCpuRequest: '1'
+          resourceMemoryLimit: 4G
+          resourceMemoryRequest: 2G
+    exec-scrape:
+      container:
+        args:
+        - --fresh
+        - -o
+        - '{{$.outputs.artifacts[''news''].path}}'
+        command:
+        - python3
+        - /app/bmw_news.py
+        image: bmw-llm:latest
+    exec-split:
+      container:
+        args:
+        - 'set -e; cd "$(mktemp -d)"
+
+          python3 /app/split.py -i "$0" --val "$1" --test "$2" --seed "$3"
+
+          for f in "$4" "$5" "$6"; do mkdir -p "$(dirname "$f")"; done
+
+          cp train.json "$4"; cp val.json "$5"; cp test.json "$6"'
+        - '{{$.inputs.artifacts[''news''].path}}'
+        - '{{$.inputs.parameters[''val_frac'']}}'
+        - '{{$.inputs.parameters[''test_frac'']}}'
+        - '{{$.inputs.parameters[''seed'']}}'
+        - '{{$.outputs.artifacts[''train''].path}}'
+        - '{{$.outputs.artifacts[''val''].path}}'
+        - '{{$.outputs.artifacts[''test''].path}}'
+        command:
+        - sh
+        - -c
+        image: bmw-llm:latest
+    exec-train:
+      container:
+        args:
+        - 'set -e; work="$(mktemp -d)"
+
+          python3 /app/train.py -i "$0" --val "$1" -o "$work/out" --model "$3" --epochs
+          "$4" --batch-size "$5" --block-size "$6" --lr "$7" --experiment "$8"
+
+          mkdir -p "$2"
+
+          find "$work/out" -maxdepth 1 -type f -exec cp {} "$2"/ \;'
+        - '{{$.inputs.artifacts[''train_data''].path}}'
+        - '{{$.inputs.artifacts[''val_data''].path}}'
+        - '{{$.outputs.artifacts[''model''].path}}'
+        - '{{$.inputs.parameters[''base_model'']}}'
+        - '{{$.inputs.parameters[''epochs'']}}'
+        - '{{$.inputs.parameters[''batch_size'']}}'
+        - '{{$.inputs.parameters[''block_size'']}}'
+        - '{{$.inputs.parameters[''lr'']}}'
+        - '{{$.inputs.parameters[''experiment'']}}'
+        command:
+        - sh
+        - -c
+        env:
+        - name: MLFLOW_TRACKING_URI
+          value: http://mlflow.mlflow.svc.cluster.local:5000
+        image: bmw-llm:latest
+        resources:
+          cpuRequest: 2.0
+          memoryLimit: 8.0
+          memoryRequest: 4.0
+          resourceCpuRequest: '2'
+          resourceMemoryLimit: 8G
+          resourceMemoryRequest: 4G
+pipelineInfo:
+  description: Scrape BMW Group news, split, fine-tune a small causal LM and evaluate
+    it on the test set.
+  name: bmw-llm
+root:
+  dag:
+    tasks:
+      evaluate:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-evaluate
+        dependentTasks:
+        - split
+        - train
+        inputs:
+          artifacts:
+            model:
+              taskOutputArtifact:
+                outputArtifactKey: model
+                producerTask: train
+            test_data:
+              taskOutputArtifact:
+                outputArtifactKey: test
+                producerTask: split
+          parameters:
+            batch_size:
+              componentInputParameter: batch_size
+            block_size:
+              componentInputParameter: block_size
+        taskInfo:
+          name: evaluate
+      scrape:
+        cachingOptions: {}
+        componentRef:
+          name: comp-scrape
+        taskInfo:
+          name: scrape
+      split:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-split
+        dependentTasks:
+        - scrape
+        inputs:
+          artifacts:
+            news:
+              taskOutputArtifact:
+                outputArtifactKey: news
+                producerTask: scrape
+          parameters:
+            seed:
+              componentInputParameter: seed
+            test_frac:
+              componentInputParameter: test_frac
+            val_frac:
+              componentInputParameter: val_frac
+        taskInfo:
+          name: split
+      train:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-train
+        dependentTasks:
+        - split
+        inputs:
+          artifacts:
+            train_data:
+              taskOutputArtifact:
+                outputArtifactKey: train
+                producerTask: split
+            val_data:
+              taskOutputArtifact:
+                outputArtifactKey: val
+                producerTask: split
+          parameters:
+            base_model:
+              componentInputParameter: base_model
+            batch_size:
+              componentInputParameter: batch_size
+            block_size:
+              componentInputParameter: block_size
+            epochs:
+              componentInputParameter: epochs
+            experiment:
+              componentInputParameter: experiment
+            lr:
+              componentInputParameter: lr
+        taskInfo:
+          name: train
+  inputDefinitions:
+    parameters:
+      base_model:
+        defaultValue: HuggingFaceTB/SmolLM2-135M
+        isOptional: true
+        parameterType: STRING
+      batch_size:
+        defaultValue: 4.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      block_size:
+        defaultValue: 256.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      epochs:
+        defaultValue: 3.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      experiment:
+        defaultValue: bmw-llm
+        isOptional: true
+        parameterType: STRING
+      lr:
+        defaultValue: 5.0e-05
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+      seed:
+        defaultValue: 42.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      test_frac:
+        defaultValue: 0.1
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+      val_frac:
+        defaultValue: 0.1
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.13.0

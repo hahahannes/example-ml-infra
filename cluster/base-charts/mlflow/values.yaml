@@ -1,0 +1,10 @@
+image: ghcr.io/mlflow/mlflow:v2.22.0
+
+storage:
+  # provided by the local-provisioner chart
+  storageClass: local-path
+  size: 10Gi
+
+service:
+  type: ClusterIP
+  port: 5000

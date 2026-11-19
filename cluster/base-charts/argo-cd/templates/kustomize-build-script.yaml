@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: argo-cd
+  name: kustomize-build-script
+data:
+  kustomize-build.sh: |
+    #!/bin/sh
+    if [ ! -z "${ARGOCD_ENV_KUSTOMIZE_PREHOOK}" ]; then
+      sh -c "${ARGOCD_ENV_KUSTOMIZE_PREHOOK}"
+    fi
+    kustomize build ${ARGOCD_ENV_KUSTOMIZE_ARGS}

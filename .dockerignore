@@ -1,0 +1,4 @@
+bmw-llm/
+__pycache__/
+*.pyc
+.cache/

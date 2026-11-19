@@ -1,0 +1,62 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: services
+  namespace: argo-cd
+spec:
+  destination:
+    namespace: argo-cd
+    server: https://kubernetes.default.svc
+  source:
+    repoURL: git@github.com:hahahannes/gitops-deployment.git
+    targetRevision: main
+    path: services
+  project: default
+  syncPolicy:
+    automated:
+      prune: true
+      allowEmpty: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argo-cd
+  namespace: argo-cd
+spec:
+  destination:
+    namespace: argo-cd
+    server: https://kubernetes.default.svc
+  source:
+    repoURL: git@github.com:hahahannes/gitops-deployment.git
+    targetRevision: main
+    path: base-charts/argo-cd
+    plugin: 
+      env:
+        - name: HELM_ARGS
+          value: -f values.yaml
+  project: default
+  syncPolicy:
+    automated:
+      prune: true
+      allowEmpty: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vault
+  namespace: argo-cd
+spec:
+  destination:
+    namespace: vault
+    server: https://kubernetes.default.svc
+  source:
+    repoURL: git@github.com:hahahannes/gitops-deployment.git
+    targetRevision: main
+    path: base-charts/vault
+  project: default
+  syncPolicy:
+    automated:
+      prune: true
+      allowEmpty: true
+    syncOptions:
+      - CreateNamespace=true

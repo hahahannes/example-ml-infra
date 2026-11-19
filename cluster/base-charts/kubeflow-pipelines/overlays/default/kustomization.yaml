@@ -1,0 +1,48 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Kubeflow Pipelines standalone install
+# https://www.kubeflow.org/docs/components/pipelines/operator-guides/installation/
+resources:
+  - github.com/kubeflow/pipelines/manifests/kustomize/cluster-scoped-resources?ref=2.5.0
+  - github.com/kubeflow/pipelines/manifests/kustomize/env/platform-agnostic?ref=2.5.0
+
+# local-path (from local-provisioner) is not the default StorageClass,
+# so point the mysql + minio volumes at it explicitly
+patches:
+  - target:
+      kind: PersistentVolumeClaim
+    patch: |-
+      - op: add
+        path: /spec/storageClassName
+        value: local-path
+  # gcr.io/ml-pipeline/minio was deleted and minio/minio is gone from Docker Hub
+  # (and quay.io), so run MinIO from the archived Bitnami image instead.
+  # Bitnami's entrypoint expects its own env/paths, so call the binary directly,
+  # and pass the credentials via the current MINIO_ROOT_* variables too.
+  - target:
+      kind: Deployment
+      name: minio
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: docker.io/bitnamilegacy/minio:2025.4.22
+      - op: add
+        path: /spec/template/spec/containers/0/command
+        value: ["/opt/bitnami/minio/bin/minio"]
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: MINIO_ROOT_USER
+          valueFrom:
+            secretKeyRef:
+              name: mlpipeline-minio-artifact
+              key: accesskey
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: MINIO_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mlpipeline-minio-artifact
+              key: secretkey

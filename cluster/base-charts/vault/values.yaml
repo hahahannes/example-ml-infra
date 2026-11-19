@@ -1,0 +1,6 @@
+vault:
+  server:
+    dev:
+      enabled: true
+    #dataStorage:
+    #  storageClass: manila-geneva-cephfs-testing-delete
