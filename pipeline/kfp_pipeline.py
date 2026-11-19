@@ -115,7 +115,7 @@ def evaluate(
     description="Scrape BMW Group news, split, fine-tune a small causal LM and evaluate it on the test set.",
 )
 def bmw_llm_pipeline(
-    base_model: str = "HuggingFaceTB/SmolLM2-135M",
+    base_model: str = "EleutherAI/pythia-70m",
     epochs: int = 3,
     batch_size: int = 4,
     block_size: int = 256,

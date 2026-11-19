@@ -12,7 +12,7 @@ SCRIPTS="$(cd "$(dirname "$0")" && pwd)"
 
 EPOCHS=${EPOCHS:-3}
 SAVE_STEPS=${SAVE_STEPS:-0}
-MODEL=${MODEL:-HuggingFaceTB/SmolLM2-135M}
+MODEL=${MODEL:-EleutherAI/pythia-70m}
 OUTPUT=${OUTPUT:-bmw-llm}
 
 # An unfinished training run (checkpoints with trainer state, no completion marker)

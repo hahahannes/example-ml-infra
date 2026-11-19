@@ -2,7 +2,7 @@
 # Name: bmw-llm
 # Description: Scrape BMW Group news, split, fine-tune a small causal LM and evaluate it on the test set.
 # Inputs:
-#    base_model: str [Default: 'HuggingFaceTB/SmolLM2-135M']
+#    base_model: str [Default: 'EleutherAI/pythia-70m']
 #    batch_size: int [Default: 4.0]
 #    block_size: int [Default: 256.0]
 #    epochs: int [Default: 3.0]
@@ -292,7 +292,7 @@ root:
   inputDefinitions:
     parameters:
       base_model:
-        defaultValue: HuggingFaceTB/SmolLM2-135M
+        defaultValue: EleutherAI/pythia-70m
         isOptional: true
         parameterType: STRING
       batch_size:

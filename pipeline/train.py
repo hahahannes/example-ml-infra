@@ -108,7 +108,7 @@ def main():
     ap.add_argument("-i", "--input", default="news.json")
     ap.add_argument("--val", help="validation JSON (e.g. val.json from split.py)")
     ap.add_argument("-o", "--output", default="bmw-llm")
-    ap.add_argument("--model", default="HuggingFaceTB/SmolLM2-135M")
+    ap.add_argument("--model", default="EleutherAI/pythia-70m")
     ap.add_argument("--epochs", type=int, default=3)
     ap.add_argument("--batch-size", type=int, default=4)
     ap.add_argument("--block-size", type=int, default=256)
