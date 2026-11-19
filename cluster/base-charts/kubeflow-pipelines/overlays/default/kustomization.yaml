@@ -6,6 +6,8 @@ kind: Kustomization
 resources:
   - github.com/kubeflow/pipelines/manifests/kustomize/cluster-scoped-resources?ref=2.5.0
   - github.com/kubeflow/pipelines/manifests/kustomize/env/platform-agnostic?ref=2.5.0
+  # checkpoint volume for the bmw-llm pipeline's train step
+  - checkpoints-pvc.yaml
 
 # local-path (from local-provisioner) is not the default StorageClass,
 # so point the mysql + minio volumes at it explicitly

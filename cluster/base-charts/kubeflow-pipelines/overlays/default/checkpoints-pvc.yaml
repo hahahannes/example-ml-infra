@@ -1,0 +1,17 @@
+# Persistent volume for training checkpoints, provisioned by local-path
+# (local-provisioner). Mounted by the train step of the bmw-llm pipeline at
+# /checkpoints so an interrupted/retried training resumes from the last checkpoint.
+# local-path volumes live on one node and are ReadWriteOnce: all pods using it
+# get scheduled onto that node.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: training-checkpoints
+  namespace: kubeflow
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi

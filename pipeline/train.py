@@ -216,8 +216,8 @@ def main():
             msg = f"epoch {epoch}/{args.epochs}  loss {metrics['epoch_train_loss']:.4f}"
             if val_blocks is not None:
                 val_loss = evaluate(model, val_blocks, args.batch_size, device)
-                metrics |= {"val_loss": val_loss, "val_perplexity": math.exp(val_loss)}
-                msg += f"  val_loss {val_loss:.4f}  val_ppl {metrics['val_perplexity']:.2f}"
+                metrics["val_loss"] = val_loss
+                msg += f"  val_loss {val_loss:.4f}"
             mlflow.log_metrics(metrics, step=step)
             print(msg, flush=True)
             save_checkpoint(model, tok, f"{args.output}/checkpoint-{step}",

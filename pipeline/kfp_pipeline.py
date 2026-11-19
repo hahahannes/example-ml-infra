@@ -6,11 +6,13 @@ Same steps as pipeline.sh, each one a pipeline task running in the project image
     scrape (bmw_news.py) -> split (split.py) -> train (train.py) -> evaluate (test set)
 
 Data and the model are passed between steps as KFP artifacts (stored in the KFP
-object store). Training and test metrics go to the in-cluster MLflow server; the
+object store). The train step mounts the `training-checkpoints` PVC (local-path,
+created by cluster/base-charts/kubeflow-pipelines) and keeps its checkpoints there,
+so a failed/retried or re-run training resumes from the latest checkpoint. Training and test metrics go to the in-cluster MLflow server; the
 test metrics are also kept as a JSON artifact (`metrics`) of the evaluate step.
 
 Usage:
-    pip install "kfp>=2.13,<3"
+    pip install "kfp>=2.13,<3" kfp-kubernetes
     python3 kfp_pipeline.py                         # compile -> bmw_llm_pipeline.yaml
     python3 kfp_pipeline.py --host http://localhost:8081 --epochs 1   # compile + start a run
 
@@ -18,15 +20,18 @@ Build-time settings (env vars, read when compiling):
     BMW_LLM_IMAGE        image built from ./Dockerfile (default: ghcr.io/hahahannes/bmw-llm:latest)
     MLFLOW_TRACKING_URI  MLflow server seen from the pipeline pods
                          (default: http://mlflow.mlflow.svc.cluster.local:5000)
+    CHECKPOINT_PVC       PVC holding the training checkpoints (default: training-checkpoints)
 """
 import argparse
 import os
 
-from kfp import compiler, dsl
+from kfp import compiler, dsl, kubernetes
 from kfp.dsl import Artifact, Dataset, Input, Model, Output
 
 IMAGE = os.environ.get("BMW_LLM_IMAGE", "ghcr.io/hahahannes/bmw-llm:latest")
 MLFLOW_URI = os.environ.get("MLFLOW_TRACKING_URI", "http://mlflow.mlflow.svc.cluster.local:5000")
+CHECKPOINT_PVC = os.environ.get("CHECKPOINT_PVC", "training-checkpoints")
+CHECKPOINT_MOUNT = "/checkpoints"
 
 
 @dsl.container_component
@@ -74,19 +79,29 @@ def train(
     block_size: int,
     lr: float,
     experiment: str,
+    save_steps: int,
+    checkpoint_dir: str,
 ):
-    """Fine-tune and export only the final model (not the per-epoch checkpoints)."""
+    """Fine-tune with checkpoints on the checkpoint PVC; export only the final model.
+
+    train.py writes its checkpoints to <CHECKPOINT_MOUNT>/<checkpoint_dir> and resumes
+    from the latest one if it matches the same data/settings (otherwise it moves them
+    to stale-*/ and starts fresh). So a retried or re-run step continues where the
+    previous attempt stopped.
+    """
     return dsl.ContainerSpec(
         image=IMAGE,
         command=["sh", "-c"],
         args=[
-            'set -e; work="$(mktemp -d)"\n'
-            'python3 /app/train.py -i "$0" --val "$1" -o "$work/out" --model "$3" '
-            '--epochs "$4" --batch-size "$5" --block-size "$6" --lr "$7" --experiment "$8"\n'
+            'set -e; out="$CHECKPOINT_MOUNT/$9"; mkdir -p "$out"\n'
+            'python3 /app/train.py -i "$0" --val "$1" -o "$out" --model "$3" '
+            '--epochs "$4" --batch-size "$5" --block-size "$6" --lr "$7" --experiment "$8" '
+            '--save-steps "${10}"\n'
             'mkdir -p "$2"\n'
-            'find "$work/out" -maxdepth 1 -type f -exec cp {} "$2"/ \\;',
+            'find "$out" -maxdepth 1 -type f -exec cp {} "$2"/ \\;',
             train_data.path, val_data.path, model.path,
             base_model, epochs, batch_size, block_size, lr, experiment,
+            checkpoint_dir, save_steps,
         ],
     )
 
@@ -124,6 +139,8 @@ def bmw_llm_pipeline(
     test_frac: float = 0.1,
     seed: int = 42,
     experiment: str = "bmw-llm",
+    save_steps: int = 0,
+    checkpoint_dir: str = "bmw-llm",
 ):
     scrape_task = scrape()
     scrape_task.set_caching_options(False)  # the feed changes; always fetch fresh news
@@ -141,8 +158,16 @@ def bmw_llm_pipeline(
         block_size=block_size,
         lr=lr,
         experiment=experiment,
+        save_steps=save_steps,
+        checkpoint_dir=checkpoint_dir,
     )
     train_task.set_env_variable("MLFLOW_TRACKING_URI", MLFLOW_URI)
+    train_task.set_env_variable("CHECKPOINT_MOUNT", CHECKPOINT_MOUNT)
+    kubernetes.mount_pvc(train_task, pvc_name=CHECKPOINT_PVC, mount_path=CHECKPOINT_MOUNT)
+    # the checkpoints live on the PVC, so a cached result would skip nothing useful
+    # and a retry resumes from the last checkpoint instead of starting over
+    train_task.set_caching_options(False)
+    train_task.set_retry(num_retries=2)
     train_task.set_cpu_request("2").set_memory_request("4G").set_memory_limit("8G")
 
     eval_task = evaluate(
