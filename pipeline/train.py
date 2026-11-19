@@ -141,7 +141,9 @@ def main():
     if ckpt is None:
         archive_checkpoints(args.output)
 
-    model = AutoModelForCausalLM.from_pretrained(ckpt or args.model).to(device)
+    # fp32: transformers v5 otherwise keeps the checkpoint dtype (fp16 for Pythia), which
+    # makes AdamW produce NaN after one step and is very slow on CPU
+    model = AutoModelForCausalLM.from_pretrained(ckpt or args.model).float().to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr)
     step, start_epoch, start_i, run_id = 0, 1, 0, None
     epoch_total, epoch_batches, perm = 0.0, 0, None
@@ -191,6 +193,8 @@ def main():
             for i in range(first, len(blocks), args.batch_size):
                 batch = blocks[perm[i : i + args.batch_size]].to(device)
                 loss = model(input_ids=batch, labels=batch).loss
+                if not torch.isfinite(loss):
+                    raise SystemExit(f"loss is {loss.item()} at step {step + 1}; aborting (check model dtype / lr)")
                 loss.backward()
                 opt.step()
                 opt.zero_grad()

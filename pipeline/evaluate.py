@@ -44,7 +44,7 @@ def main():
 
     device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
     tok = AutoTokenizer.from_pretrained(args.model)
-    model = AutoModelForCausalLM.from_pretrained(args.model).to(device)
+    model = AutoModelForCausalLM.from_pretrained(args.model).float().to(device)
 
     blocks = make_blocks(load_corpus(args.input), tok, args.block_size)
     if len(blocks) == 0:
