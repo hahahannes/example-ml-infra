@@ -114,7 +114,7 @@ def main():
     ap.add_argument("--block-size", type=int, default=256)
     ap.add_argument("--lr", type=float, default=5e-5)
     ap.add_argument("--save-steps", type=int, default=0, help="checkpoint every N steps (0 = only per epoch)")
-    ap.add_argument("--log-steps", type=int, default=10, help="log train loss every N steps")
+    ap.add_argument("--log-steps", type=int, default=1, help="log train loss every N steps")
     ap.add_argument("--experiment", default="bmw-llm", help="MLflow experiment name")
     ap.add_argument("--log-model", action="store_true", help="upload final model to MLflow as artifacts")
     ap.add_argument("--no-resume", action="store_true",
@@ -179,6 +179,10 @@ def main():
                     "mlflow_run_id": run.info.run_id}
 
         model.train()
+        steps_per_epoch = math.ceil(len(blocks) / args.batch_size)
+        total_steps = steps_per_epoch * args.epochs
+        t0, step0 = time.time(), step
+        print(f"Training {args.epochs} epoch(s), {steps_per_epoch} steps/epoch, {total_steps} steps total", flush=True)
         for epoch in range(start_epoch, args.epochs + 1):
             if epoch == start_epoch and perm is not None:
                 total, n_batches, first = epoch_total, epoch_batches, start_i  # resume mid-epoch
@@ -195,6 +199,11 @@ def main():
                 n_batches += 1
                 if step % args.log_steps == 0:
                     mlflow.log_metric("train_loss", loss.item(), step=step)
+                    rate = (time.time() - t0) / (step - step0)
+                    eta = rate * (total_steps - step)
+                    print(f"epoch {epoch}/{args.epochs}  step {step}/{total_steps}  "
+                          f"loss {loss.item():.4f}  avg {total / n_batches:.4f}  "
+                          f"{rate:.2f}s/step  eta {eta / 60:.1f}min", flush=True)
                 if args.save_steps and step % args.save_steps == 0:
                     save_checkpoint(model, tok, f"{args.output}/checkpoint-{step}",
                                     trainer_state(epoch, i + args.batch_size, perm, total, n_batches))
@@ -206,7 +215,7 @@ def main():
                 metrics |= {"val_loss": val_loss, "val_perplexity": math.exp(val_loss)}
                 msg += f"  val_loss {val_loss:.4f}  val_ppl {metrics['val_perplexity']:.2f}"
             mlflow.log_metrics(metrics, step=step)
-            print(msg)
+            print(msg, flush=True)
             save_checkpoint(model, tok, f"{args.output}/checkpoint-{step}",
                             trainer_state(epoch + 1, 0, None, 0.0, 0))
 

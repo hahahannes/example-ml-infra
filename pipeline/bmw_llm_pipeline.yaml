@@ -328,4 +328,4 @@ root:
         isOptional: true
         parameterType: NUMBER_DOUBLE
 schemaVersion: 2.1.0
-sdkVersion: kfp-2.13.0
+sdkVersion: kfp-2.18.1

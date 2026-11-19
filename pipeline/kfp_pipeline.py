@@ -12,7 +12,7 @@ test metrics are also kept as a JSON artifact (`metrics`) of the evaluate step.
 Usage:
     pip install "kfp>=2.13,<3"
     python3 kfp_pipeline.py                         # compile -> bmw_llm_pipeline.yaml
-    python3 kfp_pipeline.py --host http://localhost:8080 --epochs 1   # compile + start a run
+    python3 kfp_pipeline.py --host http://localhost:8081 --epochs 1   # compile + start a run
 
 Build-time settings (env vars, read when compiling):
     BMW_LLM_IMAGE        image built from ./Dockerfile (default: ghcr.io/hahahannes/bmw-llm:latest)
