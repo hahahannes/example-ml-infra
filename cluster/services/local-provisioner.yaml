@@ -16,9 +16,9 @@ spec:
     spec:
       project: default
       source:
-        repoURL: git@github.com:hahahannes/gitops-deployment.git
+        repoURL: git@github.com:hahahannes/example-ml-infra.git
         targetRevision: main
-        path: base-charts/local-provisioner
+        path: cluster/base-charts/local-provisioner
         plugin: 
           env:
             - name: HELM_ARGS

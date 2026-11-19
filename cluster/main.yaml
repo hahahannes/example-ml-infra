@@ -8,9 +8,9 @@ spec:
     namespace: argo-cd
     server: https://kubernetes.default.svc
   source:
-    repoURL: git@github.com:hahahannes/gitops-deployment.git
+    repoURL: git@github.com:hahahannes/example-ml-infra.git
     targetRevision: main
-    path: services
+    path: cluster/services
   project: default
   syncPolicy:
     automated:
@@ -27,9 +27,9 @@ spec:
     namespace: argo-cd
     server: https://kubernetes.default.svc
   source:
-    repoURL: git@github.com:hahahannes/gitops-deployment.git
+    repoURL: git@github.com:hahahannes/example-ml-infra.git
     targetRevision: main
-    path: base-charts/argo-cd
+    path: cluster/base-charts/argo-cd
     plugin: 
       env:
         - name: HELM_ARGS
@@ -50,9 +50,9 @@ spec:
     namespace: vault
     server: https://kubernetes.default.svc
   source:
-    repoURL: git@github.com:hahahannes/gitops-deployment.git
+    repoURL: git@github.com:hahahannes/example-ml-infra.git
     targetRevision: main
-    path: base-charts/vault
+    path: cluster/base-charts/vault
   project: default
   syncPolicy:
     automated:

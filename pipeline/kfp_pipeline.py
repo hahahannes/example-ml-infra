@@ -15,7 +15,7 @@ Usage:
     python3 kfp_pipeline.py --host http://localhost:8080 --epochs 1   # compile + start a run
 
 Build-time settings (env vars, read when compiling):
-    BMW_LLM_IMAGE        image built from ./Dockerfile (default: bmw-llm:latest)
+    BMW_LLM_IMAGE        image built from ./Dockerfile (default: ghcr.io/hahahannes/bmw-llm:latest)
     MLFLOW_TRACKING_URI  MLflow server seen from the pipeline pods
                          (default: http://mlflow.mlflow.svc.cluster.local:5000)
 """
@@ -25,7 +25,7 @@ import os
 from kfp import compiler, dsl
 from kfp.dsl import Artifact, Dataset, Input, Model, Output
 
-IMAGE = os.environ.get("BMW_LLM_IMAGE", "bmw-llm:latest")
+IMAGE = os.environ.get("BMW_LLM_IMAGE", "ghcr.io/hahahannes/bmw-llm:latest")
 MLFLOW_URI = os.environ.get("MLFLOW_TRACKING_URI", "http://mlflow.mlflow.svc.cluster.local:5000")
 
 

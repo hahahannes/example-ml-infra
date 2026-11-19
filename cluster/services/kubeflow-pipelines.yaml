@@ -16,9 +16,9 @@ spec:
     spec:
       project: default
       source:
-        repoURL: git@github.com:hahahannes/gitops-deployment.git
+        repoURL: git@github.com:hahahannes/example-ml-infra.git
         targetRevision: main
-        path: base-charts/kubeflow-pipelines
+        path: cluster/base-charts/kubeflow-pipelines
         plugin:
           env:
             - name: KUSTOMIZE_ARGS

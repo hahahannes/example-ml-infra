@@ -124,7 +124,7 @@ deploymentSpec:
         env:
         - name: MLFLOW_TRACKING_URI
           value: http://mlflow.mlflow.svc.cluster.local:5000
-        image: bmw-llm:latest
+        image: ghcr.io/hahahannes/bmw-llm:latest
         resources:
           cpuRequest: 1.0
           memoryLimit: 4.0
@@ -141,7 +141,7 @@ deploymentSpec:
         command:
         - python3
         - /app/bmw_news.py
-        image: bmw-llm:latest
+        image: ghcr.io/hahahannes/bmw-llm:latest
     exec-split:
       container:
         args:
@@ -162,7 +162,7 @@ deploymentSpec:
         command:
         - sh
         - -c
-        image: bmw-llm:latest
+        image: ghcr.io/hahahannes/bmw-llm:latest
     exec-train:
       container:
         args:
@@ -189,7 +189,7 @@ deploymentSpec:
         env:
         - name: MLFLOW_TRACKING_URI
           value: http://mlflow.mlflow.svc.cluster.local:5000
-        image: bmw-llm:latest
+        image: ghcr.io/hahahannes/bmw-llm:latest
         resources:
           cpuRequest: 2.0
           memoryLimit: 8.0
